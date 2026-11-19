@@ -12,7 +12,7 @@ jobs:
     name: "Call InfraFlow Core"
     uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-validate.yml@ff645961f8b9f202af14802a85fbba55c6e8d358
     with:
-      terraform-version: "1.10.4"
+      terraform-version: "1.5.7"
       working-directory: "terraform"
       enable-fmt-check: true
       enable-validate: true
