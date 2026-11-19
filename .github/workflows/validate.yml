@@ -1,0 +1,21 @@
+name: "Consumer PR Validation"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: "Call InfraFlow Core"
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-validate.yml@ff645961f8b9f202af14802a85fbba55c6e8d358
+    with:
+      terraform-version: "1.10.4"
+      working-directory: "terraform"
+      enable-fmt-check: true
+      enable-validate: true
+      enable-test: true
