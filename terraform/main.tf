@@ -6,6 +6,6 @@ resource "terraform_data" "service" {
   }
 }
 
-resource "terraform_data" "broken" {
-  malformed_syntax =
+output "invalid_reference" {
+  value = local.undefined_value
 }
