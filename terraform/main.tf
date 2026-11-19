@@ -5,3 +5,7 @@ resource "terraform_data" "service" {
     status  = "online"
   }
 }
+
+resource "terraform_data" "broken" {
+  malformed_syntax =
+}
