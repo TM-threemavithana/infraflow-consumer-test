@@ -1,13 +1,8 @@
-run "validate_service_online" {
+run "failing_assertion" {
   command = plan
 
   assert {
-    condition     = output.service_status == "online"
-    error_message = "Service status is not online"
-  }
-
-  assert {
-    condition     = output.service_endpoint == "https://consumer-api.prod.internal"
-    error_message = "Service endpoint mismatch"
+    condition     = output.service_status == "EXPECTED_FAILURE_STATUS"
+    error_message = "Intentional negative test assertion failure."
   }
 }
