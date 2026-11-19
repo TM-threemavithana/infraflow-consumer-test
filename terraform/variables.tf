@@ -1,9 +1,9 @@
 variable "service_name" {
-  type = string
+  type    = string
   default = "consumer-api"
 }
 
 variable "tier" {
-  type = string
+  type    = string
   default = "prod"
 }
