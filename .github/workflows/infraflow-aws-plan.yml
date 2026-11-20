@@ -11,7 +11,7 @@ permissions:
 jobs:
   aws-adapter-smoke:
     name: "Call InfraFlow AWS Adapter (Cloud-Free)"
-    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-aws.yml@7368f436fc5b9115270edf3181ee80b3f7a0f76e
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-aws.yml@484b067aa500d5523d1bccc06ce111cfe736a8af
     with:
       aws-region: "us-east-1"
       working-directory: "terraform"
