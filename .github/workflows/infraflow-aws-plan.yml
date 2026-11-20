@@ -1,0 +1,20 @@
+name: "InfraFlow AWS Cloud Adapter Smoke Test"
+
+on:
+  pull_request:
+  push:
+    branches: [test/g05-aws-adapter-smoke]
+
+permissions:
+  contents: read
+
+jobs:
+  aws-adapter-smoke:
+    name: "Call InfraFlow AWS Adapter (Cloud-Free)"
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-aws.yml@5a3b03abc46208f0ebcf9eb413160585fdaec6be
+    with:
+      aws-region: "us-east-1"
+      working-directory: "terraform"
+      terraform-version: "1.10.4"
+      environment: "test-environment"
+      enable-aws-auth: false
