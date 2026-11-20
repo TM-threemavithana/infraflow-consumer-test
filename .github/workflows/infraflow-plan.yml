@@ -12,7 +12,7 @@ permissions:
 jobs:
   plan:
     name: "Call InfraFlow Planning Engine"
-    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-plan.yml@438fa1a2f8fa8bfb6ead80e26762bc08d851af55
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-plan.yml@a2d7d5a13a4311278611faeefccbf39a4a29aef9
     with:
       terraform-version: "1.10.4"
       working-directory: "terraform"
@@ -21,5 +21,3 @@ jobs:
       enable-trivy: true
       upload-plan-attestation: true
       enable-github-attestation: true
-      platform-repository: "TM-threemavithana/infraflow"
-      platform-ref: "438fa1a2f8fa8bfb6ead80e26762bc08d851af55"
