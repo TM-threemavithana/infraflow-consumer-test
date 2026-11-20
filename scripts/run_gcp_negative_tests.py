@@ -112,8 +112,8 @@ def run_guard(env_overrides):
         "TARGET_REF": "refs/heads/main",
         "GITHUB_REPOSITORY": "TM-threemavithana/infraflow-consumer-test",
         "WORKFLOW_REPO": "TM-threemavithana/infraflow",
-        "WORKFLOW_SHA": "543e426b4d9530daf999394710b3ba6262534f16",
-        "WORKFLOW_REF": "TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@543e426b4d9530daf999394710b3ba6262534f16",
+        "WORKFLOW_SHA": "7c4dff9d5ab9e917fab79f59fa359bb413dca720",
+        "WORKFLOW_REF": "TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@7c4dff9d5ab9e917fab79f59fa359bb413dca720",
     }
     base_env.update(env_overrides)
     env = {k: str(v) for k, v in base_env.items()}
