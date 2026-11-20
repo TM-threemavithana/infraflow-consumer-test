@@ -1,0 +1,54 @@
+name: "InfraFlow AWS Cloud Adapter Smoke Test"
+
+on:
+  pull_request:
+  push:
+    branches: [test/g05-aws-adapter-smoke, main]
+
+permissions:
+  contents: read
+
+jobs:
+  aws-adapter-smoke:
+    name: "Call InfraFlow AWS Adapter (Cloud-Free)"
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-aws.yml@484b067aa500d5523d1bccc06ce111cfe736a8af
+    with:
+      aws-region: "us-east-1"
+      working-directory: "terraform"
+      terraform-version: "1.10.4"
+      environment: "test-environment"
+      enable-aws-auth: false
+
+  verify-cloud-free-outputs:
+    name: "Verify Cloud-Free Non-Deployment Status"
+    needs: [aws-adapter-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Assert Non-Deployment Authorization Status"
+        run: |
+          echo "Verifying AWS Adapter outputs..."
+          AUTH_STATUS="${{ needs.aws-adapter-smoke.outputs.authorization-status }}"
+          PLAN_STATUS="${{ needs.aws-adapter-smoke.outputs.plan-status }}"
+          AWS_AUTH="${{ needs.aws-adapter-smoke.outputs.aws-auth-status }}"
+          SEC_STATUS="${{ needs.aws-adapter-smoke.outputs.security-status }}"
+          echo "authorization-status: ${AUTH_STATUS}"
+          echo "plan-status:          ${PLAN_STATUS}"
+          echo "aws-auth-status:      ${AWS_AUTH}"
+          echo "security-status:      ${SEC_STATUS}"
+          if [[ "${AUTH_STATUS}" != "not-applicable" ]]; then
+            echo "ERROR: Expected authorization-status=not-applicable in cloud-free mode, got: ${AUTH_STATUS}"
+            exit 1
+          fi
+          if [[ "${PLAN_STATUS}" != "success" ]]; then
+            echo "ERROR: Expected plan-status=success, got: ${PLAN_STATUS}"
+            exit 1
+          fi
+          if [[ "${AWS_AUTH}" != "disabled" ]]; then
+            echo "ERROR: Expected aws-auth-status=disabled, got: ${AWS_AUTH}"
+            exit 1
+          fi
+          if [[ "${SEC_STATUS}" != "success" ]]; then
+            echo "ERROR: Expected security-status=success, got: ${SEC_STATUS}"
+            exit 1
+          fi
+          echo "Cloud-free non-deployment status verified."
