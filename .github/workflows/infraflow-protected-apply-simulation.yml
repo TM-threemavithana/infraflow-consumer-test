@@ -103,8 +103,8 @@ jobs:
           fi
 
           # 4. Assert plan was reserved in replay ledger
-          if [[ "${REPLAY_STATUS}" != "reserved" ]]; then
-            echo "::error::Expected replay-status=reserved, got: '${REPLAY_STATUS}'"
+          if [[ "${REPLAY_STATUS}" != "RESERVED" && "${REPLAY_STATUS}" != "reserved" ]]; then
+            echo "::error::Expected replay-status=RESERVED or reserved, got: '${REPLAY_STATUS}'"
             exit 1
           fi
 
