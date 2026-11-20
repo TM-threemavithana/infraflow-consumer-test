@@ -142,7 +142,7 @@ sign_provenance(
     repository=REPO_NAME,
     commit_sha=VALID_COMMIT,
     workflow=".github/workflows/infraflow-protected-apply-simulation.yml",
-    policy_result="pass",
+    policy_result="passed",
     signing_tier="standard"
 )
 

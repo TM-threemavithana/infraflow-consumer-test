@@ -3,12 +3,12 @@
   "algorithm": "AES-256-GCM",
   "key_provider": "mock-kms",
   "key_id": "mock-kms-kek-1",
-  "wrapped_dek": "aOINgxRno1osQpScOisEvZdA1iHXcqvlMk5gXH/tL4X+3N/aHdzIg/KDwTR2HHAh",
-  "wrapped_dek_nonce": "m0m77MBGGcBszIp6",
-  "nonce": "xYPZqoyvaPG9ubHe",
+  "wrapped_dek": "/O4WbaC+R9bB/iH7ym9l/TnlVsi58GFf5M0/bb1/J3QZOv5O1MrLS/9A2iXG4sJu",
+  "wrapped_dek_nonce": "wYYqVj7pOLsKvpwB",
+  "nonce": "Wbi0TNoWrqf1x46T",
   "plan_digest": "0000000000000000000000000000000000000000000000000000000000000000",
   "plan_size_bytes": 64,
-  "created_at": "2026-11-20T17:46:19.539505+00:00",
+  "created_at": "2026-11-20T17:53:03.053761+00:00",
   "aad": {
     "commit_sha": "d0660de837ca07d5bdd56f04b0e50691ce98bd28",
     "environment": "test-environment",
@@ -19,8 +19,8 @@
     "workflow": ".github/workflows/infraflow-protected-apply-simulation.yml",
     "plan_digest_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
   },
-  "ciphertext": "432ayyOqSzMuClxG4Tr1+mXy/DamMeBlzQY5LOnWjfogbEqIj9gXf2la0PkT12d5amA9Fjvj4mKBc63dHMAe7q2HqxgruSCNkhENd9zNBx4=",
-  "expires_at": "2026-11-21T05:46:19.539505+00:00",
+  "ciphertext": "W2wEkDjavZkdiQYCH8zSZVuF4dkga3SkQiq5g3LphGoYCU0Rc7ljmg/bOFTxt6h73FrvYVVcOgU/baDv6J+dtg67C+lV9bOnGnbDG95b8uM=",
+  "expires_at": "2026-11-21T05:53:03.053761+00:00",
   "execution_context": {
     "terraform_version": "1.10.4",
     "backend": "s3://infraflow-consumer-tfstate/env/test/tf.state",
