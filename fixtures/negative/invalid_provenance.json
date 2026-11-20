@@ -1,0 +1,8 @@
+{
+  "payload": "forged",
+  "signatures": [
+    {
+      "sig": "invalid"
+    }
+  ]
+}

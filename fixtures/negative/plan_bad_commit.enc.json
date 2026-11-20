@@ -1,0 +1,23 @@
+{
+  "schema_version": "infraflow-plan-envelope-v1",
+  "algorithm": "AES-256-GCM",
+  "key_provider": "mock-kms",
+  "key_id": "mock-kms-kek-1",
+  "wrapped_dek": "3vfX8b/Nv11r/SVZi66ViDZp1kEHotSordTTv9OAheDzUj5jQurUfnwK6znXXP6e",
+  "wrapped_dek_nonce": "kuVlvawG9XtFlClp",
+  "nonce": "KCsUIiofpMDC5C5x",
+  "plan_digest": "9d9b2a3254817284a5d88e8cbdb351f2a8a84365db2c6987dc380d94046714b6",
+  "plan_size_bytes": 64,
+  "created_at": "2026-11-20T17:53:03.058407+00:00",
+  "aad": {
+    "commit_sha": "0000000000000000000000000000000000000000",
+    "environment": "test-environment",
+    "plan_digest": "9d9b2a3254817284a5d88e8cbdb351f2a8a84365db2c6987dc380d94046714b6",
+    "plan_identifier": "plan-bad-commit-01",
+    "repository": "TM-threemavithana/infraflow-consumer-test",
+    "schema_version": "infraflow-plan-envelope-v1",
+    "workflow": ".github/workflows/infraflow-protected-apply-simulation.yml"
+  },
+  "ciphertext": "6LykJ8G3yqEXTxnSxk6iKMgGzJdJ+0nAoUEqicYTC/TCKXdwI3SsuJsVIBYj9OKwmuMwE53+lYpOv1lEVZNhmw/Hp0Hh3lO4sd6AYwlkVNI=",
+  "expires_at": "2026-11-21T05:53:03.053761+00:00"
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": "infraflow-plan-envelope-v1",
+  "algorithm": "AES-256-GCM",
+  "key_provider": "mock-kms",
+  "key_id": "mock-kms-kek-1",
+  "wrapped_dek": "pcjVyQSD9FGKgSxzX2PC9YL6GKI4hUjPz6LgawKA4JaoMh4qC+8M8THaAhjdGNL8",
+  "wrapped_dek_nonce": "ZFSZljY/tRXyFse2",
+  "nonce": "dq0BrPxbcyPPH0kE",
+  "plan_digest": "9d9b2a3254817284a5d88e8cbdb351f2a8a84365db2c6987dc380d94046714b6",
+  "plan_size_bytes": 64,
+  "created_at": "2026-11-20T17:53:03.058051+00:00",
+  "aad": {
+    "commit_sha": "d0660de837ca07d5bdd56f04b0e50691ce98bd28",
+    "environment": "test-environment",
+    "plan_digest": "9d9b2a3254817284a5d88e8cbdb351f2a8a84365db2c6987dc380d94046714b6",
+    "plan_identifier": "plan-bad-repo-01",
+    "repository": "attacker/malicious-repo",
+    "schema_version": "infraflow-plan-envelope-v1",
+    "workflow": ".github/workflows/infraflow-protected-apply-simulation.yml"
+  },
+  "ciphertext": "BhNQpUGCSVBdoG1QWhFQk0MvS87pKVU5ZG+eLz5Cf14kxJGNDj9Cyc5qTCnmWoHC7OT3PQoUpbhP1HkghPFV9FwsfFDguh+4ex8tPk1i/Lw=",
+  "expires_at": "2026-11-21T05:53:03.053761+00:00"
+}

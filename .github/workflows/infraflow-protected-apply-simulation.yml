@@ -1,0 +1,245 @@
+name: "InfraFlow Protected Apply Simulation & Negative Security Integration"
+
+# ==============================================================================
+# INVARIANTS:
+# 1. Zero Cloud Cost ($0.00) & Zero Cloud Credentials.
+# 2. Simulation-only: No real state-modifying actions (terraform apply/destroy) occur.
+# 3. Pinned to immutable platform commit SHA: 8985e2a8e9d8b4ca0337a7867a18ef077ef9c0e1.
+# 4. Enforces strict fail-closed authorization: validates encrypted envelope,
+#    provenance authenticity, plan TTL, state consistency, replay ledger, and blast radius.
+# 5. Untrusted pull requests are rejected from executing live simulation; PRs execute
+#    negative assertion testing proving expected rejection.
+# ==============================================================================
+
+on:
+  push:
+    branches:
+      - test/g06-protected-apply-smoke
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # POSITIVE EXECUTION PATH (Trusted Push / Dispatch Contexts Only)
+  # ============================================================================
+  apply-simulation-smoke:
+    name: "Call InfraFlow Protected Apply (Positive Simulation)"
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-apply.yml@8985e2a8e9d8b4ca0337a7867a18ef077ef9c0e1
+    permissions:
+      contents: read
+    with:
+      plan-id: "plan-consumer-smoke-01"
+      plan-envelope-file: "artifacts/plan.enc.json"
+      state-file: "artifacts/terraform.tfstate"
+      expected-commit: "d0660de837ca07d5bdd56f04b0e50691ce98bd28"
+      environment: "test-environment"
+      expected-lineage: "3f2e1d0c-4b5a-6789-0123-abcdef456789"
+      expected-serial: 42
+      expected-backend: "s3://infraflow-consumer-tfstate/env/test/tf.state"
+      expected-workspace: "default"
+      provenance-file: "artifacts/plan-provenance.json"
+      require-production-provenance: false
+      allow-initial-state: false
+      max-ttl-seconds: 43200
+      clock-skew-seconds: 60
+      destruction-policy-file: "artifacts/destruction-policy.json"
+      plan-json-file: "artifacts/plan.json"
+
+  verify-simulation-outputs:
+    name: "Verify Simulation Contract Outputs & Gating"
+    needs: [apply-simulation-smoke]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Assert Positive Simulation Authorization Status"
+        env:
+          AUTH_STATUS: ${{ needs.apply-simulation-smoke.outputs.authorization-status }}
+          PLAN_STATUS: ${{ needs.apply-simulation-smoke.outputs.plan-verification-status }}
+          STATE_STATUS: ${{ needs.apply-simulation-smoke.outputs.state-consistency-status }}
+          REPLAY_STATUS: ${{ needs.apply-simulation-smoke.outputs.replay-status }}
+          DESTRUCT_STATUS: ${{ needs.apply-simulation-smoke.outputs.destruction-status }}
+          SIMULATION_STATUS: ${{ needs.apply-simulation-smoke.outputs.simulation-status }}
+        run: |
+          set -euo pipefail
+          echo "=============================================================================="
+          echo ">>> Verifying InfraFlow Protected Apply Simulation Contract Outputs"
+          echo "=============================================================================="
+          echo "authorization-status:     ${AUTH_STATUS}"
+          echo "plan-verification-status: ${PLAN_STATUS}"
+          echo "state-consistency-status: ${STATE_STATUS}"
+          echo "replay-status:            ${REPLAY_STATUS}"
+          echo "destruction-status:       ${DESTRUCT_STATUS}"
+          echo "simulation-status:        ${SIMULATION_STATUS}"
+
+          # 1. Assert pre-execution authorization succeeded
+          if [[ "${AUTH_STATUS}" != "AUTHORIZED_FOR_SIMULATION" ]]; then
+            echo "::error::Expected authorization-status=AUTHORIZED_FOR_SIMULATION, got: '${AUTH_STATUS}'"
+            exit 1
+          fi
+
+          # 2. Assert envelope cryptographic check passed
+          if [[ "${PLAN_STATUS}" != "success" ]]; then
+            echo "::error::Expected plan-verification-status=success, got: '${PLAN_STATUS}'"
+            exit 1
+          fi
+
+          # 3. Assert state consistency check passed
+          if [[ "${STATE_STATUS}" != "success" ]]; then
+            echo "::error::Expected state-consistency-status=success, got: '${STATE_STATUS}'"
+            exit 1
+          fi
+
+          # 4. Assert plan was reserved in replay ledger
+          if [[ "${REPLAY_STATUS}" != "RESERVED" && "${REPLAY_STATUS}" != "reserved" ]]; then
+            echo "::error::Expected replay-status=RESERVED or reserved, got: '${REPLAY_STATUS}'"
+            exit 1
+          fi
+
+          # 5. Assert plan was safe from destructive erasure
+          if [[ "${DESTRUCT_STATUS}" != "safe" && "${DESTRUCT_STATUS}" != "authorized" ]]; then
+            echo "::error::Expected destruction-status=safe or authorized, got: '${DESTRUCT_STATUS}'"
+            exit 1
+          fi
+
+          # 6. Assert execution mode is strictly simulation-only
+          if [[ "${SIMULATION_STATUS}" != "simulated-only" ]]; then
+            echo "::error::Expected simulation-status=simulated-only, got: '${SIMULATION_STATUS}'"
+            exit 1
+          fi
+
+          echo "Protected apply simulation contract verified successfully (All gates AUTHORIZED_FOR_SIMULATION)."
+
+  # ============================================================================
+  # NEGATIVE SECURITY INTEGRATION SUITE (Trusted Push & Dispatch Contexts)
+  # ============================================================================
+  negative-security-integration:
+    name: "Adversarial Security Integration Suite (12 Vectors)"
+    needs: [verify-simulation-outputs]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout Consumer Repository"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Checkout Platform Toolchain (Immutable SHA)"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: "TM-threemavithana/infraflow"
+          ref: "8985e2a8e9d8b4ca0337a7867a18ef077ef9c0e1"
+          path: ".infraflow-platform"
+          persist-credentials: false
+
+      - name: "Setup Python 3.11"
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: "Install Cryptography Dependency"
+        run: |
+          python3 -m pip install --no-cache-dir cryptography
+
+      - name: "Execute Negative Security Integration Suite"
+        run: |
+          set -euo pipefail
+          python3 scripts/run_negative_tests.py
+
+  # ============================================================================
+  # PR-BASED NEGATIVE SECURITY TEST (Untrusted Pull Request Context)
+  # ============================================================================
+  assert-untrusted-pr-rejection:
+    name: "PR Rejection Negative Test (SEC-02 Enforcement)"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout Consumer Repository"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Checkout Platform Toolchain (Immutable SHA)"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: "TM-threemavithana/infraflow"
+          ref: "8985e2a8e9d8b4ca0337a7867a18ef077ef9c0e1"
+          path: ".infraflow-platform"
+          persist-credentials: false
+
+      - name: "Setup Python 3.11"
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: "Install Cryptography Dependency"
+        run: |
+          python3 -m pip install --no-cache-dir cryptography
+
+      - name: "Assert Untrusted Pull Request Event Rejection"
+        run: |
+          set -euo pipefail
+          echo "=============================================================================="
+          echo ">>> Negative Test: Verifying Untrusted PR Event Rejection"
+          echo "=============================================================================="
+          
+          # Extract the exact input guard script from the reusable workflow
+          GUARD_SCRIPT=$(python3 scripts/extract_guard.py .infraflow-platform/.github/workflows/reusable-tf-apply.yml)
+
+          # Execute guard under simulated pull_request event
+          GUARD_OUTPUT=$(
+            INPUT_PLAN_ID="plan-consumer-smoke-01" \
+            INPUT_ENVELOPE_FILE="artifacts/plan.enc.json" \
+            INPUT_STATE_FILE="artifacts/terraform.tfstate" \
+            INPUT_EXPECTED_COMMIT="d0660de837ca07d5bdd56f04b0e50691ce98bd28" \
+            INPUT_ENV="test-environment" \
+            INPUT_LINEAGE="3f2e1d0c-4b5a-6789-0123-abcdef456789" \
+            INPUT_SERIAL="42" \
+            INPUT_BACKEND="s3://infraflow-consumer-tfstate/env/test/tf.state" \
+            INPUT_WORKSPACE="default" \
+            INPUT_PROVENANCE_FILE="artifacts/plan-provenance.json" \
+            INPUT_LEDGER_PATH=".infraflow/ledger.db" \
+            INPUT_DESTRUCTION_POLICY="artifacts/destruction-policy.json" \
+            INPUT_DESTRUCTION_CONF_FILE="" \
+            INPUT_DESTRUCTION_CONF_TOKEN="" \
+            INPUT_MAX_DELETIONS="-1" \
+            INPUT_MAX_REPLACEMENTS="-1" \
+            INPUT_PLAN_JSON="artifacts/plan.json" \
+            INPUT_TRUSTED_AUTHORIZERS="" \
+            EVENT_NAME="pull_request" \
+            TARGET_REF="refs/heads/test/g06-protected-apply-smoke" \
+            WORKFLOW_REPO="TM-threemavithana/infraflow" \
+            WORKFLOW_SHA="8985e2a8e9d8b4ca0337a7867a18ef077ef9c0e1" \
+            WORKFLOW_REF="TM-threemavithana/infraflow/.github/workflows/reusable-tf-apply.yml@8985e2a8e9d8b4ca0337a7867a18ef077ef9c0e1" \
+            bash -c "${GUARD_SCRIPT}" 2>&1 || true
+          )
+
+          echo "${GUARD_OUTPUT}"
+
+          if [[ "${GUARD_OUTPUT}" == *"strictly prohibited from requesting execution or apply authorization"* ]]; then
+            echo "PASS: Untrusted pull request execution strictly rejected as expected."
+          else
+            echo "::error::Security Failure: Untrusted PR event was NOT rejected!"
+            exit 1
+          fi
+
+      - name: "Execute Negative Security Integration Suite on PR"
+        run: |
+          set -euo pipefail
+          python3 scripts/run_negative_tests.py
