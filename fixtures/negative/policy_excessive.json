@@ -1,0 +1,6 @@
+{
+  "schema_version": "infraflow-destruction-policy-v1",
+  "policy_name": "excessive-policy",
+  "max_deletions": 50,
+  "max_replacements": 10
+}

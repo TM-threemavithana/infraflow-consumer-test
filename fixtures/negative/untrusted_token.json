@@ -1,0 +1,14 @@
+{
+  "schema_version": "infraflow-destruction-confirmation-v1",
+  "plan_id": "plan-consumer-smoke-01",
+  "plan_digest_sha256": "9d9b2a3254817284a5d88e8cbdb351f2a8a84365db2c6987dc380d94046714b6",
+  "source_repository": "TM-threemavithana/infraflow-consumer-test",
+  "target_environment": "test-environment",
+  "change_summary": {
+    "pure_deletions": 1,
+    "replacements": 0
+  },
+  "authorized_by": "mallory@untrusted.attacker",
+  "created_at": "2026-11-20T17:46:19.539505+00:00",
+  "expires_at": "2026-11-20T18:46:19.539505+00:00"
+}

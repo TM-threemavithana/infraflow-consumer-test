@@ -1,0 +1,37 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.10.4",
+  "resource_changes": [
+    {
+      "address": "local_file.smoke_test",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "smoke_test",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content": "smoke",
+          "filename": "smoke.txt"
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket.data",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "data",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "bucket": "my-data-bucket"
+        },
+        "after": null
+      }
+    }
+  ]
+}

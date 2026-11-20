@@ -1,0 +1,15 @@
+{
+  "schema_version": "infraflow-destruction-policy-v1",
+  "policy_name": "consumer-smoke-policy",
+  "max_deletions": 5,
+  "max_replacements": 10,
+  "allow_state_wide_destroy": false,
+  "protected_resources": [
+    "aws_iam_role.*",
+    "aws_kms_key.*"
+  ],
+  "trusted_authorizers": [
+    "sec-lead@company.internal",
+    "release-bot@company.internal"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.10.4",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "local_file.smoke_test",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "smoke_test",
+          "provider_name": "registry.terraform.io/hashicorp/local",
+          "values": {
+            "content": "smoke test",
+            "filename": "smoke.txt"
+          }
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "local_file.smoke_test",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "smoke_test",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content": "smoke test",
+          "filename": "smoke.txt"
+        },
+        "after_unknown": {}
+      }
+    }
+  ],
+  "configuration": {
+    "root_module": {}
+  }
+}
