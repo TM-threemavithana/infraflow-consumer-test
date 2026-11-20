@@ -1,0 +1,206 @@
+name: "InfraFlow GCP Cloud Adapter Integration & Security Verification"
+
+# ==============================================================================
+# INFRAFLOW G07.4: EXTERNAL GCP CONSUMER INTEGRATION
+# Invariants:
+# 1. Zero Cloud Cost ($0.00) & Zero Cloud Credentials.
+# 2. Simulation / Cloud-Free Speculative Planning Only: No real GCP resources.
+# 3. Pinned to immutable platform commit SHA: 482d37c9be71e49b40dcada5fdc830cb0fd2ffb1.
+# 4. Mandatory gate enforcement: Trivy & Conftest/OPA policies strictly enforced.
+# 5. Untrusted pull requests requesting live credentials fail closed (SEC-02).
+# ==============================================================================
+
+on:
+  push:
+    branches:
+      - test/g07-gcp-adapter-smoke
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # 1. POSITIVE CLOUD-FREE SMOKE TEST
+  # ============================================================================
+  gcp-adapter-smoke:
+    name: "Call InfraFlow GCP Adapter (Cloud-Free)"
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@482d37c9be71e49b40dcada5fdc830cb0fd2ffb1
+    with:
+      gcp-project-id: "infraflow-consumer-project"
+      gcp-region: "us-central1"
+      working-directory: "terraform"
+      terraform-version: "1.10.4"
+      environment: "production"
+      enable-gcp-auth: false
+      enable-policy-evaluation: true
+      enable-trivy: true
+      severity-threshold: "HIGH,CRITICAL"
+      fail-on-destructive: true
+
+  # ============================================================================
+  # 2. POSITIVE OUTPUT CONTRACT VERIFICATION
+  # ============================================================================
+  verify-cloud-free-outputs:
+    name: "Verify Cloud-Free Output Contract"
+    needs: [gcp-adapter-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Assert Cloud-Free Security & Authorization Status"
+        run: |
+          echo "=============================================================================="
+          echo ">>> Verifying GCP Adapter Contract Outputs"
+          echo "=============================================================================="
+          AUTH_STATUS="${{ needs.gcp-adapter-smoke.outputs.authorization-status }}"
+          PLAN_STATUS="${{ needs.gcp-adapter-smoke.outputs.plan-status }}"
+          GCP_AUTH="${{ needs.gcp-adapter-smoke.outputs.gcp-auth-status }}"
+          SEC_STATUS="${{ needs.gcp-adapter-smoke.outputs.security-status }}"
+          HAS_CHANGES="${{ needs.gcp-adapter-smoke.outputs.has-changes }}"
+          HAS_DESTRUCTIVE="${{ needs.gcp-adapter-smoke.outputs.has-destructive-changes }}"
+          TOTAL_CHANGES="${{ needs.gcp-adapter-smoke.outputs.total-changes }}"
+
+          echo "authorization-status:    ${AUTH_STATUS}"
+          echo "plan-status:             ${PLAN_STATUS}"
+          echo "gcp-auth-status:         ${GCP_AUTH}"
+          echo "security-status:         ${SEC_STATUS}"
+          echo "has-changes:             ${HAS_CHANGES}"
+          echo "has-destructive-changes: ${HAS_DESTRUCTIVE}"
+          echo "total-changes:           ${TOTAL_CHANGES}"
+
+          # 1. Authorization status must be not-applicable in cloud-free mode
+          if [[ "${AUTH_STATUS}" != "not-applicable" ]]; then
+            echo "::error::Expected authorization-status=not-applicable, got '${AUTH_STATUS}'"
+            exit 1
+          fi
+
+          # 2. Strict invariant: authorization-status must NEVER be authorized in cloud-free mode
+          if [[ "${AUTH_STATUS}" == "authorized" ]]; then
+            echo "::error::Security Violation: Cloud-free mode must never emit authorization-status=authorized"
+            exit 1
+          fi
+
+          # 3. Plan status must be success
+          if [[ "${PLAN_STATUS}" != "success" ]]; then
+            echo "::error::Expected plan-status=success, got '${PLAN_STATUS}'"
+            exit 1
+          fi
+
+          # 4. GCP auth status must be disabled
+          if [[ "${GCP_AUTH}" != "disabled" ]]; then
+            echo "::error::Expected gcp-auth-status=disabled, got '${GCP_AUTH}'"
+            exit 1
+          fi
+
+          # 5. Security status must be success
+          if [[ "${SEC_STATUS}" != "success" ]]; then
+            echo "::error::Expected security-status=success, got '${SEC_STATUS}'"
+            exit 1
+          fi
+
+          # 6. Destructive changes must be false
+          if [[ "${HAS_DESTRUCTIVE}" != "false" ]]; then
+            echo "::error::Expected has-destructive-changes=false, got '${HAS_DESTRUCTIVE}'"
+            exit 1
+          fi
+
+          echo "Cloud-free output contract verified successfully."
+
+  # ============================================================================
+  # 3. NEGATIVE SECURITY INTEGRATION TEST HARNESS (22 VECTORS)
+  # ============================================================================
+  gcp-negative-security-harness:
+    name: "Negative Security & Adversarial Test Harness"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Consumer Repository"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Checkout Platform Reusable Workflow & Policies"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: "TM-threemavithana/infraflow"
+          ref: "482d37c9be71e49b40dcada5fdc830cb0fd2ffb1"
+          path: ".infraflow-platform"
+          persist-credentials: false
+
+      - name: "Install Conftest Policy Engine"
+        env:
+          CONFTEST_VERSION: "0.56.0"
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/bin"
+          ARCH=$(uname -m)
+          [[ "${ARCH}" == "x86_64" ]] && ARCH="x86_64" || ARCH="arm64"
+          curl -sSL -o "${RUNNER_TEMP}/conftest.tar.gz" "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_${ARCH}.tar.gz"
+          tar -xzf "${RUNNER_TEMP}/conftest.tar.gz" -C "${RUNNER_TEMP}/bin" conftest
+          chmod +x "${RUNNER_TEMP}/bin/conftest"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+          "${RUNNER_TEMP}/bin/conftest" --version
+
+      - name: "Execute 22-Vector GCP Negative Security Suite"
+        run: |
+          python3 scripts/run_gcp_negative_tests.py
+
+  # ============================================================================
+  # 4. PR EVENT SECURITY VERIFICATION (SEC-02 FAIL-CLOSED ASSERTION)
+  # ============================================================================
+  verify-pr-event-security:
+    name: "PR Event Security Assertion (SEC-02 Fail-Closed)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Platform Toolchain"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: "TM-threemavithana/infraflow"
+          ref: "482d37c9be71e49b40dcada5fdc830cb0fd2ffb1"
+          path: ".infraflow-platform"
+          persist-credentials: false
+
+      - name: "Assert SEC-02 Invariant: Live GCP Auth in PR Event Is Rejected"
+        run: |
+          set -euo pipefail
+          echo "Verifying that untrusted PR events requesting live GCP auth fail closed..."
+          python3 -c "
+          import yaml, subprocess
+          with open('.infraflow-platform/.github/workflows/reusable-tf-gcp.yml', 'r') as f:
+              data = yaml.safe_load(f)
+          guard = [s for s in data['jobs']['validate-inputs']['steps'] if s.get('id') == 'guard'][0]['run']
+          env = {
+              'INPUT_VERSION': '1.10.4',
+              'INPUT_DIR': '.',
+              'INPUT_VAR_FILE': '',
+              'INPUT_ENV': 'production',
+              'INPUT_PROJECT_ID': 'infraflow-ref-project',
+              'INPUT_GCP_REGION': 'us-central1',
+              'INPUT_WIF_PROVIDER': '',
+              'INPUT_SERVICE_ACCOUNT': '',
+              'INPUT_BUCKET': '',
+              'INPUT_PREFIX': '',
+              'INPUT_SEVERITY': 'HIGH,CRITICAL',
+              'INPUT_POLICY_DIR': '',
+              'ENABLE_POLICY_EVAL': 'true',
+              'ENABLE_TRIVY': 'true',
+              'ENABLE_GCP_AUTH': 'true',
+              'EVENT_NAME': 'pull_request',
+              'TARGET_REF': 'refs/pull/1/merge',
+              'GITHUB_REPOSITORY': 'TM-threemavithana/infraflow-consumer-test',
+              'WORKFLOW_REPO': 'TM-threemavithana/infraflow',
+              'WORKFLOW_SHA': '482d37c9be71e49b40dcada5fdc830cb0fd2ffb1',
+              'WORKFLOW_REF': 'TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@482d37c9be71e49b40dcada5fdc830cb0fd2ffb1',
+          }
+          p = subprocess.run(['bash', '-c', guard], env=env, capture_output=True, text=True)
+          print('Exit code:', p.returncode)
+          print('Output:\n', p.stdout + p.stderr)
+          assert p.returncode != 0, 'SECURITY VIOLATION: enable-gcp-auth: true on pull_request was unexpectedly permitted!'
+          print('SEC-02 Invariant Verified: Untrusted PR auth request strictly rejected.')
+          "
