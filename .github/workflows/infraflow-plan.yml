@@ -1,0 +1,23 @@
+name: "InfraFlow Speculative Plan & Attestation"
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  plan:
+    name: "Call InfraFlow Planning Engine"
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-plan.yml@ed965edd00391b6b1461a65184838bb7cca58dd3
+    with:
+      terraform-version: "1.10.4"
+      working-directory: "terraform"
+      environment: "test-environment"
+      enable-policy-evaluation: true
+      enable-trivy: true
+      upload-plan-attestation: true
+      enable-github-attestation: true
