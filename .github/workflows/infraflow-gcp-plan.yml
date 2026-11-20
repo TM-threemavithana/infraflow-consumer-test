@@ -5,7 +5,7 @@ name: "InfraFlow GCP Cloud Adapter Integration & Security Verification"
 # Invariants:
 # 1. Zero Cloud Cost ($0.00) & Zero Cloud Credentials.
 # 2. Simulation / Cloud-Free Speculative Planning Only: No real GCP resources.
-# 3. Pinned to immutable platform commit SHA: 2dfc8590fcc7e8fb4bc98c3b8056c522594af988.
+# 3. Pinned to immutable platform commit SHA: 96e43c2193532f1ebc39c8997990af530bf1b2e2.
 # 4. Mandatory gate enforcement: Trivy & Conftest/OPA policies strictly enforced.
 # 5. Untrusted pull requests requesting live credentials fail closed (SEC-02).
 # ==============================================================================
@@ -33,7 +33,7 @@ jobs:
   # ============================================================================
   gcp-adapter-smoke:
     name: "Call InfraFlow GCP Adapter (Cloud-Free)"
-    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@2dfc8590fcc7e8fb4bc98c3b8056c522594af988
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@96e43c2193532f1ebc39c8997990af530bf1b2e2
     with:
       gcp-project-id: "infraflow-consumer-project"
       gcp-region: "us-central1"
@@ -129,7 +129,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: "TM-threemavithana/infraflow"
-          ref: "2dfc8590fcc7e8fb4bc98c3b8056c522594af988"
+          ref: "96e43c2193532f1ebc39c8997990af530bf1b2e2"
           path: ".infraflow-platform"
           persist-credentials: false
 
@@ -162,7 +162,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: "TM-threemavithana/infraflow"
-          ref: "2dfc8590fcc7e8fb4bc98c3b8056c522594af988"
+          ref: "96e43c2193532f1ebc39c8997990af530bf1b2e2"
           path: ".infraflow-platform"
           persist-credentials: false
 
@@ -195,8 +195,8 @@ jobs:
               'TARGET_REF': 'refs/pull/1/merge',
               'GITHUB_REPOSITORY': 'TM-threemavithana/infraflow-consumer-test',
               'WORKFLOW_REPO': 'TM-threemavithana/infraflow',
-              'WORKFLOW_SHA': '2dfc8590fcc7e8fb4bc98c3b8056c522594af988',
-              'WORKFLOW_REF': 'TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@2dfc8590fcc7e8fb4bc98c3b8056c522594af988',
+              'WORKFLOW_SHA': '96e43c2193532f1ebc39c8997990af530bf1b2e2',
+              'WORKFLOW_REF': 'TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@96e43c2193532f1ebc39c8997990af530bf1b2e2',
           }
           p = subprocess.run(['bash', '-c', guard], env=env, capture_output=True, text=True)
           print('Exit code:', p.returncode)
