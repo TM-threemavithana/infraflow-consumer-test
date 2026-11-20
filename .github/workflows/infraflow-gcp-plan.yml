@@ -5,7 +5,7 @@ name: "InfraFlow GCP Cloud Adapter Integration & Security Verification"
 # Invariants:
 # 1. Zero Cloud Cost ($0.00) & Zero Cloud Credentials.
 # 2. Simulation / Cloud-Free Speculative Planning Only: No real GCP resources.
-# 3. Pinned to immutable platform commit SHA: 96e43c2193532f1ebc39c8997990af530bf1b2e2.
+# 3. Pinned to immutable platform commit SHA: 543e426b4d9530daf999394710b3ba6262534f16.
 # 4. Mandatory gate enforcement: Trivy & Conftest/OPA policies strictly enforced.
 # 5. Untrusted pull requests requesting live credentials fail closed (SEC-02).
 # ==============================================================================
@@ -33,7 +33,7 @@ jobs:
   # ============================================================================
   gcp-adapter-smoke:
     name: "Call InfraFlow GCP Adapter (Cloud-Free)"
-    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@96e43c2193532f1ebc39c8997990af530bf1b2e2
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@543e426b4d9530daf999394710b3ba6262534f16
     with:
       gcp-project-id: "infraflow-consumer-project"
       gcp-region: "us-central1"
@@ -111,6 +111,32 @@ jobs:
             exit 1
           fi
 
+          # 7. total-changes must be a non-negative integer
+          if [[ ! "${TOTAL_CHANGES}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Contract violation: total-changes must be a non-negative integer, got '${TOTAL_CHANGES}'"
+            exit 1
+          fi
+
+          # 8. has-changes must agree with total-changes
+          if [[ "${HAS_CHANGES}" == "true" && "${TOTAL_CHANGES}" -le 0 ]]; then
+            echo "::error::Contract violation: has-changes is true but total-changes is ${TOTAL_CHANGES} (must be > 0)"
+            exit 1
+          fi
+          if [[ "${HAS_CHANGES}" == "false" && "${TOTAL_CHANGES}" -ne 0 ]]; then
+            echo "::error::Contract violation: has-changes is false but total-changes is ${TOTAL_CHANGES} (must be == 0)"
+            exit 1
+          fi
+
+          # 9. Smoke fixture expectations: exactly 1 created resource, has-changes=true, has-destructive-changes=false
+          if [[ "${TOTAL_CHANGES}" != "1" ]]; then
+            echo "::error::Contract violation: expected total-changes=1 for smoke fixture, got '${TOTAL_CHANGES}'"
+            exit 1
+          fi
+          if [[ "${HAS_CHANGES}" != "true" ]]; then
+            echo "::error::Contract violation: expected has-changes=true for smoke fixture, got '${HAS_CHANGES}'"
+            exit 1
+          fi
+
           echo "Cloud-free output contract verified successfully."
 
   # ============================================================================
@@ -129,7 +155,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: "TM-threemavithana/infraflow"
-          ref: "96e43c2193532f1ebc39c8997990af530bf1b2e2"
+          ref: "543e426b4d9530daf999394710b3ba6262534f16"
           path: ".infraflow-platform"
           persist-credentials: false
 
@@ -162,7 +188,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: "TM-threemavithana/infraflow"
-          ref: "96e43c2193532f1ebc39c8997990af530bf1b2e2"
+          ref: "543e426b4d9530daf999394710b3ba6262534f16"
           path: ".infraflow-platform"
           persist-credentials: false
 
@@ -195,8 +221,8 @@ jobs:
               'TARGET_REF': 'refs/pull/1/merge',
               'GITHUB_REPOSITORY': 'TM-threemavithana/infraflow-consumer-test',
               'WORKFLOW_REPO': 'TM-threemavithana/infraflow',
-              'WORKFLOW_SHA': '96e43c2193532f1ebc39c8997990af530bf1b2e2',
-              'WORKFLOW_REF': 'TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@96e43c2193532f1ebc39c8997990af530bf1b2e2',
+              'WORKFLOW_SHA': '543e426b4d9530daf999394710b3ba6262534f16',
+              'WORKFLOW_REF': 'TM-threemavithana/infraflow/.github/workflows/reusable-tf-gcp.yml@543e426b4d9530daf999394710b3ba6262534f16',
           }
           p = subprocess.run(['bash', '-c', guard], env=env, capture_output=True, text=True)
           print('Exit code:', p.returncode)
