@@ -1,0 +1,243 @@
+name: "InfraFlow Azure Cloud Adapter Integration & Security Verification"
+
+# ==============================================================================
+# INFRAFLOW G07.7: EXTERNAL AZURE CONSUMER INTEGRATION
+# Invariants:
+# 1. Zero Cloud Cost ($0.00) & Zero Azure Credentials.
+# 2. Simulation / Cloud-Free Speculative Planning Only: No real Azure resources.
+# 3. Pinned to immutable platform commit SHA: 59500fddecd40cf50d4b53e1852b5aca8ed8f192.
+# 4. Mandatory gate enforcement: Trivy & Conftest/OPA policies strictly enforced.
+# 5. Untrusted pull requests requesting live credentials fail closed (SEC-02).
+# ==============================================================================
+
+on:
+  push:
+    branches:
+      - test/g07-azure-adapter-smoke
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # 1. POSITIVE CLOUD-FREE SMOKE TEST
+  # ============================================================================
+  azure-adapter-smoke:
+    name: "Call InfraFlow Azure Adapter (Cloud-Free)"
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-azure.yml@59500fddecd40cf50d4b53e1852b5aca8ed8f192
+    with:
+      azure-subscription-id: "00000000-0000-0000-0000-000000000001"
+      azure-tenant-id: "00000000-0000-0000-0000-000000000002"
+      azure-client-id: "00000000-0000-0000-0000-000000000003"
+      azure-resource-group-name: "rg-infraflow-smoke"
+      azure-storage-account-name: "stinfraflowsmoke01"
+      azure-storage-container-name: "tfstate"
+      azure-backend-key: "smoke/terraform.tfstate"
+      azure-region: "eastus"
+      terraform-version: "1.10.4"
+      working-directory: "test/g07-azure-adapter-smoke"
+      enable-azure-auth: false
+      enable-policy-evaluation: true
+      enable-trivy: true
+      severity-threshold: "HIGH,CRITICAL"
+      fail-on-destructive: false
+      environment: "smoke"
+
+  # ============================================================================
+  # 2. POSITIVE OUTPUT CONTRACT VERIFICATION
+  # ============================================================================
+  verify-cloud-free-outputs:
+    name: "Verify Azure Cloud-Free Output Contract"
+    needs: [azure-adapter-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Assert Azure Cloud-Free Output Contract"
+        env:
+          AUTH_STATUS: ${{ needs.azure-adapter-smoke.outputs.authorization-status }}
+          PLAN_STATUS: ${{ needs.azure-adapter-smoke.outputs.plan-status }}
+          AZURE_AUTH: ${{ needs.azure-adapter-smoke.outputs.azure-auth-status }}
+          SEC_STATUS: ${{ needs.azure-adapter-smoke.outputs.security-status }}
+          HAS_CHANGES: ${{ needs.azure-adapter-smoke.outputs.has-changes }}
+          HAS_DESTRUCTIVE: ${{ needs.azure-adapter-smoke.outputs.has-destructive-changes }}
+          TOTAL_CHANGES: ${{ needs.azure-adapter-smoke.outputs.total-changes }}
+        run: |
+          echo "=============================================================================="
+          echo ">>> Verifying Azure Adapter Contract Outputs"
+          echo "=============================================================================="
+          echo "authorization-status:     ${AUTH_STATUS}"
+          echo "plan-status:              ${PLAN_STATUS}"
+          echo "azure-auth-status:        ${AZURE_AUTH}"
+          echo "security-status:          ${SEC_STATUS}"
+          echo "has-changes:              ${HAS_CHANGES}"
+          echo "has-destructive-changes:  ${HAS_DESTRUCTIVE}"
+          echo "total-changes:            ${TOTAL_CHANGES}"
+
+          # 1. Authorization status must be not-applicable in cloud-free mode
+          if [[ "${AUTH_STATUS}" != "not-applicable" ]]; then
+            echo "::error::Expected authorization-status=not-applicable, got '${AUTH_STATUS}'"
+            exit 1
+          fi
+
+          # 2. Strict invariant: authorization-status must NEVER be authorized in cloud-free mode
+          if [[ "${AUTH_STATUS}" == "authorized" ]]; then
+            echo "::error::Security Violation: Cloud-free mode must never emit authorization-status=authorized"
+            exit 1
+          fi
+
+          # 3. Plan status must be success
+          if [[ "${PLAN_STATUS}" != "success" ]]; then
+            echo "::error::Expected plan-status=success, got '${PLAN_STATUS}'"
+            exit 1
+          fi
+
+          # 4. Azure auth status must be disabled
+          if [[ "${AZURE_AUTH}" != "disabled" ]]; then
+            echo "::error::Expected azure-auth-status=disabled, got '${AZURE_AUTH}'"
+            exit 1
+          fi
+
+          # 5. Security status must be success
+          if [[ "${SEC_STATUS}" != "success" ]]; then
+            echo "::error::Expected security-status=success, got '${SEC_STATUS}'"
+            exit 1
+          fi
+
+          # 6. Destructive changes must be false
+          if [[ "${HAS_DESTRUCTIVE}" != "false" ]]; then
+            echo "::error::Expected has-destructive-changes=false, got '${HAS_DESTRUCTIVE}'"
+            exit 1
+          fi
+
+          # 7. total-changes must be numeric
+          if [[ ! "${TOTAL_CHANGES}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Expected total-changes to be a non-negative integer, got '${TOTAL_CHANGES}'"
+            exit 1
+          fi
+
+          # 8. has-changes must be a boolean
+          if [[ "${HAS_CHANGES}" != "true" && "${HAS_CHANGES}" != "false" ]]; then
+            echo "::error::Expected has-changes to be true or false, got '${HAS_CHANGES}'"
+            exit 1
+          fi
+
+          # 9. Contract: smoke fixture has exactly 1 resource, has-changes=true, has-destructive-changes=false
+          if [[ "${TOTAL_CHANGES}" != "1" ]]; then
+            echo "::error::Contract violation: expected total-changes=1 for smoke fixture (terraform_data.azure_service), got '${TOTAL_CHANGES}'"
+            exit 1
+          fi
+          if [[ "${HAS_CHANGES}" != "true" ]]; then
+            echo "::error::Contract violation: expected has-changes=true for smoke fixture, got '${HAS_CHANGES}'"
+            exit 1
+          fi
+
+          echo "=============================================================================="
+          echo ">>> Azure cloud-free output contract verified successfully."
+          echo "=============================================================================="
+
+  # ============================================================================
+  # 3. NEGATIVE SECURITY INTEGRATION TEST HARNESS (36 VECTORS)
+  # ============================================================================
+  azure-negative-security-harness:
+    name: "Azure Negative Security & Adversarial Test Harness"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Consumer Repository"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Checkout Platform Reusable Workflow & Policies"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: "TM-threemavithana/infraflow"
+          ref: "59500fddecd40cf50d4b53e1852b5aca8ed8f192"
+          path: ".infraflow-platform"
+          persist-credentials: false
+
+      - name: "Install Conftest Policy Engine"
+        env:
+          CONFTEST_VERSION: "0.56.0"
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/bin"
+          ARCH=$(uname -m)
+          [[ "${ARCH}" == "x86_64" ]] && ARCH="x86_64" || ARCH="arm64"
+          curl -sSL -o "${RUNNER_TEMP}/conftest.tar.gz" "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_${ARCH}.tar.gz"
+          tar -xzf "${RUNNER_TEMP}/conftest.tar.gz" -C "${RUNNER_TEMP}/bin" conftest
+          chmod +x "${RUNNER_TEMP}/bin/conftest"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+          "${RUNNER_TEMP}/bin/conftest" --version
+
+      - name: "Execute 36-Vector Azure Negative Security Suite"
+        run: |
+          python3 scripts/run_azure_negative_tests.py
+
+  # ============================================================================
+  # 4. PR EVENT SECURITY VERIFICATION (SEC-02 FAIL-CLOSED ASSERTION)
+  # ============================================================================
+  verify-pr-event-security:
+    name: "PR Event Security Assertion (SEC-02 Fail-Closed)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Platform Toolchain"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: "TM-threemavithana/infraflow"
+          ref: "59500fddecd40cf50d4b53e1852b5aca8ed8f192"
+          path: ".infraflow-platform"
+          persist-credentials: false
+
+      - name: "Assert SEC-02 Invariant: Live Azure Auth in PR Event Is Rejected"
+        run: |
+          set -euo pipefail
+          echo "Verifying that untrusted PR events requesting live Azure auth fail closed..."
+          python3 -c "
+          import yaml, subprocess
+          with open('.infraflow-platform/.github/workflows/reusable-tf-azure.yml', 'r') as f:
+              data = yaml.safe_load(f)
+          guard = [s for s in data['jobs']['validate-inputs']['steps'] if s.get('id') == 'guard'][0]['run']
+          env = {
+              'INPUT_SUBSCRIPTION_ID': '00000000-0000-0000-0000-000000000001',
+              'INPUT_TENANT_ID': '00000000-0000-0000-0000-000000000002',
+              'INPUT_CLIENT_ID': '00000000-0000-0000-0000-000000000003',
+              'INPUT_AZURE_RG': 'rg-infraflow-smoke',
+              'INPUT_BACKEND_RG': '',
+              'INPUT_REGION': 'eastus',
+              'INPUT_AZURE_SA': 'stinfraflowsmoke01',
+              'INPUT_BACKEND_SA': '',
+              'INPUT_AZURE_CONTAINER': 'tfstate',
+              'INPUT_BACKEND_CONTAINER': '',
+              'INPUT_AZURE_KEY': 'smoke/terraform.tfstate',
+              'INPUT_BACKEND_KEY': '',
+              'INPUT_VERSION': '1.10.4',
+              'INPUT_DIR': 'test/g07-azure-adapter-smoke',
+              'INPUT_VAR_FILE': '',
+              'INPUT_ENV': 'smoke',
+              'ENABLE_AZURE_AUTH': 'true',
+              'ENABLE_POLICY_EVAL': 'true',
+              'INPUT_POLICY_DIR': '',
+              'ENABLE_TRIVY': 'true',
+              'INPUT_SEVERITY': 'HIGH,CRITICAL',
+              'FAIL_DESTRUCTIVE': 'false',
+              'EVENT_NAME': 'pull_request',
+              'TARGET_REF': 'refs/pull/1/merge',
+              'GITHUB_REPOSITORY': 'TM-threemavithana/infraflow-consumer-test',
+              'WORKFLOW_REPO': 'TM-threemavithana/infraflow',
+              'WORKFLOW_SHA': '59500fddecd40cf50d4b53e1852b5aca8ed8f192',
+              'WORKFLOW_REF': 'TM-threemavithana/infraflow/.github/workflows/reusable-tf-azure.yml@59500fddecd40cf50d4b53e1852b5aca8ed8f192',
+          }
+          p = subprocess.run(['bash', '-c', guard], env=env, capture_output=True, text=True)
+          print('Exit code:', p.returncode)
+          print('Output:\n', p.stdout + p.stderr)
+          assert p.returncode != 0, 'SECURITY VIOLATION: enable-azure-auth: true on pull_request was unexpectedly permitted!'
+          print('SEC-02 Invariant Verified: Untrusted PR auth request strictly rejected.')
+          "
