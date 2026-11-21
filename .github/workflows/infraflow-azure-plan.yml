@@ -5,7 +5,7 @@ name: "InfraFlow Azure Cloud Adapter Integration & Security Verification"
 # Invariants:
 # 1. Zero Cloud Cost ($0.00) & Zero Azure Credentials.
 # 2. Simulation / Cloud-Free Speculative Planning Only: No real Azure resources.
-# 3. Pinned to immutable platform commit SHA: de8ff47dc513ea88892ef29b363e419d396b4290.
+# 3. Pinned to immutable platform commit SHA: 59500fddecd40cf50d4b53e1852b5aca8ed8f192.
 # 4. Mandatory gate enforcement: Trivy & Conftest/OPA policies strictly enforced.
 # 5. Untrusted pull requests requesting live credentials fail closed (SEC-02).
 # ==============================================================================
@@ -33,7 +33,7 @@ jobs:
   # ============================================================================
   azure-adapter-smoke:
     name: "Call InfraFlow Azure Adapter (Cloud-Free)"
-    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-azure.yml@de8ff47dc513ea88892ef29b363e419d396b4290
+    uses: TM-threemavithana/infraflow/.github/workflows/reusable-tf-azure.yml@59500fddecd40cf50d4b53e1852b5aca8ed8f192
     with:
       azure-subscription-id: "00000000-0000-0000-0000-000000000001"
       azure-tenant-id: "00000000-0000-0000-0000-000000000002"
@@ -159,7 +159,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: "TM-threemavithana/infraflow"
-          ref: "de8ff47dc513ea88892ef29b363e419d396b4290"
+          ref: "59500fddecd40cf50d4b53e1852b5aca8ed8f192"
           path: ".infraflow-platform"
           persist-credentials: false
 
@@ -192,7 +192,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: "TM-threemavithana/infraflow"
-          ref: "de8ff47dc513ea88892ef29b363e419d396b4290"
+          ref: "59500fddecd40cf50d4b53e1852b5aca8ed8f192"
           path: ".infraflow-platform"
           persist-credentials: false
 
@@ -232,8 +232,8 @@ jobs:
               'TARGET_REF': 'refs/pull/1/merge',
               'GITHUB_REPOSITORY': 'TM-threemavithana/infraflow-consumer-test',
               'WORKFLOW_REPO': 'TM-threemavithana/infraflow',
-              'WORKFLOW_SHA': 'de8ff47dc513ea88892ef29b363e419d396b4290',
-              'WORKFLOW_REF': 'TM-threemavithana/infraflow/.github/workflows/reusable-tf-azure.yml@de8ff47dc513ea88892ef29b363e419d396b4290',
+              'WORKFLOW_SHA': '59500fddecd40cf50d4b53e1852b5aca8ed8f192',
+              'WORKFLOW_REF': 'TM-threemavithana/infraflow/.github/workflows/reusable-tf-azure.yml@59500fddecd40cf50d4b53e1852b5aca8ed8f192',
           }
           p = subprocess.run(['bash', '-c', guard], env=env, capture_output=True, text=True)
           print('Exit code:', p.returncode)

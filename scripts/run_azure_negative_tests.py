@@ -130,8 +130,8 @@ def run_guard(env_overrides):
         "TARGET_REF": "refs/heads/main",
         "GITHUB_REPOSITORY": "TM-threemavithana/infraflow-consumer-test",
         "WORKFLOW_REPO": "TM-threemavithana/infraflow",
-        "WORKFLOW_SHA": "de8ff47dc513ea88892ef29b363e419d396b4290",
-        "WORKFLOW_REF": "TM-threemavithana/infraflow/.github/workflows/reusable-tf-azure.yml@de8ff47dc513ea88892ef29b363e419d396b4290",
+        "WORKFLOW_SHA": "59500fddecd40cf50d4b53e1852b5aca8ed8f192",
+        "WORKFLOW_REF": "TM-threemavithana/infraflow/.github/workflows/reusable-tf-azure.yml@59500fddecd40cf50d4b53e1852b5aca8ed8f192",
     }
     base_env.update(env_overrides)
     env = {k: str(v) for k, v in base_env.items()}
